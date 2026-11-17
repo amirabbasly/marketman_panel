@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  OPERATOR
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CANCELLED
+}
+
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  phone             String
+  password          String
+  role              Role         @default(OPERATOR)
+  firstName         String
+  lastName          String
+  nationalId        String?
+  nationalIdPhoto   String?
+  birthDate         DateTime?
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  leads             Lead[]       @relation("LeadCreator")
+  contactedLeads    Lead[]       @relation("LeadContactedBy")
+  changeRequests    ChangeRequest[]
+  reviewedRequests  ChangeRequest[] @relation("Reviewer")
+}
+
+model Lead {
+  id                String       @id @default(uuid())
+  brandName         String
+  personName        String
+  address           String
+  city              String?
+  businessArea      String
+  description       String?
+  phone             String
+  status            LeadStatus   @default(NEW)
+  contactNote       String?
+  suggestedAmount   Decimal?
+  contactedAt       DateTime?
+  contactedById     String?
+  createdById       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  createdBy         User         @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  contactedBy       User?        @relation("LeadContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
+}
+
+model ChangeRequest {
+  id                String       @id @default(uuid())
+  operatorId        String
+  field             String
+  oldValue          String?
+  newValue          String?
+  photoUrl          String?
+  status            ChangeRequestStatus @default(PENDING)
+  reviewedAt        DateTime?
+  reviewedById      String?
+  createdAt         DateTime     @default(now())
+
+  operator          User         @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  reviewedBy        User?        @relation("Reviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+}

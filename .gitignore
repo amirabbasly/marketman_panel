@@ -1,0 +1,28 @@
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+.env
+.env.local
+.env.*.local
+
+# Lock files (created by npm install)
+**/package-lock.json
+
+# Next.js build artifacts
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts
+backend/dist/
+
+frontend/.next/
+frontend/out/
+backend/dist/
+
+backend/uploads/
+*.log
+
+.idea/
+.vscode/
+*.swp
