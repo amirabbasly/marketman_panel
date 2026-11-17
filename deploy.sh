@@ -60,7 +60,17 @@ fi
 # ---------- هماهنگ‌کردن خودکار nginx روی سرور ----------
 if [ -d /etc/nginx/sites-available ] && sudo -n true 2>/dev/null; then
   echo ">>> نصب/به‌روزرسانی کانفیگ nginx و ریلود..."
-  sudo cp nginx/marketman.conf /etc/nginx/sites-available/marketman
+  if sudo test -f /etc/nginx/sites-available/marketman && sudo grep -q "ssl_certificate" /etc/nginx/sites-available/marketman; then
+    # گواهی SSL (certbot) روی کانفیگ نصب‌شده هست؛ آن را پاک نمی‌کنیم، فقط پورت‌ها را هماهنگ می‌کنیم
+    echo "   (گواهی SSL روی کانفیگ فعلی هست؛ فقط پورت‌ها به‌روز می‌شوند تا HTTPS از کار نیفتد)"
+    # روش ساده و مطمئن: همه proxy_pass ها را بر اساس ترتیب (اول فرانت، بقیه بک‌اند) تنظیم کن
+    sudo awk -v fe="$FRONTEND_PORT" -v be="$BACKEND_PORT" '
+      $0 !~ /^[[:space:]]*#/ && /proxy_pass http:\/\/127\.0\.0\.1:/ { n++; if (n==1) sub(/:[0-9]+;/, ":" fe ";"); else sub(/:[0-9]+;/, ":" be ";") }
+      { print }' /etc/nginx/sites-available/marketman > /tmp/marketman.nginx
+    sudo cp /tmp/marketman.nginx /etc/nginx/sites-available/marketman
+  else
+    sudo cp nginx/marketman.conf /etc/nginx/sites-available/marketman
+  fi
   sudo ln -sf /etc/nginx/sites-available/marketman /etc/nginx/sites-enabled/marketman
   if sudo nginx -t; then
     sudo systemctl reload nginx && echo "   ✔ nginx ریلود شد"
