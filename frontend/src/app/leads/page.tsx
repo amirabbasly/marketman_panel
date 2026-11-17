@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LeadRow } from '@/components/LeadRow';
-import { Search } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 import Link from 'next/link';
 
 if (typeof window !== 'undefined' && !isManager()) {
@@ -18,17 +18,23 @@ if (typeof window !== 'undefined' && !isManager()) {
 export default function LeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', search: '', from: '', to: '' });
+  const [filters, setFilters] = useState(() => ({ status: '', search: typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('q') || '' : '', from: '', to: '' }));
 
   const [form, setForm] = useState({
     brandName: '', personName: '', address: '', city: '', businessArea: '', description: '', phone: '',
+    assignmentMode: 'OPEN', assignedToId: '',
   });
+  const [operators, setOperators] = useState<any[]>([]);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadLeads();
   }, [filters]);
+
+  useEffect(() => {
+    api.get('/users').then((r) => setOperators((r.data.users || []).filter((u: any) => u.role === 'OPERATOR' && u.isActive))).catch(() => {});
+  }, []);
 
   const loadLeads = () => {
     api.get('/leads', { params: filters }).then((r) => {
@@ -43,7 +49,7 @@ export default function LeadsPage() {
     setCreating(true);
     try {
       await api.post('/leads', form);
-      setForm({ brandName: '', personName: '', address: '', city: '', businessArea: '', description: '', phone: '' });
+      setForm({ brandName: '', personName: '', address: '', city: '', businessArea: '', description: '', phone: '', assignmentMode: 'OPEN', assignedToId: '' });
       loadLeads();
     } catch (err: any) {
       setError(err.response?.data?.error || 'خطا در ثبت لیست مشتریان');
@@ -68,9 +74,15 @@ export default function LeadsPage() {
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-gray-900">ثبت لیست مشتریان روزانه</h1>
         </div>
-        <Link href="/operators">
-          <Button variant="ghost">مدیریت اپراتورها</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => {
+            const rows: any[][] = [['نام برند','نام شخص','شهر','حوزه فعالیت','آدرس','شماره تماس','وضعیت','مبلغ پیشنهادی','توضیحات تماس']];
+            leads.forEach((l) => rows.push([l.brandName, l.personName, l.city || '', l.businessArea, l.address, l.phone, l.status, l.suggestedAmount || '', l.contactNote || '']));
+            const csv = '\uFEFF' + rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = 'marketman-leads.csv'; a.click(); URL.revokeObjectURL(a.href);
+          }}><Download className="h-4 w-4" />خروجی CSV</Button>
+          <Link href="/operators"><Button variant="ghost">مدیریت اپراتورها</Button></Link>
+        </div>
       </div>
 
       <Card>
@@ -108,6 +120,22 @@ export default function LeadsPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">شماره تماس</label>
               <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="۰۹۱۲۳۴۵۶۷۸۹" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">حالت اختصاص</label>
+              <select value={form.assignmentMode} onChange={(e) => setForm({ ...form, assignmentMode: e.target.value })} className="w-full">
+                <option value="OPEN">آزاد — ارسال برای همه اپراتورها (اولین قبول‌کننده)</option>
+                <option value="ASSIGNED">اختصاصی — فقط یک اپراتور مشخص</option>
+              </select>
+            </div>
+            {form.assignmentMode === 'ASSIGNED' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">اپراتور مقصد</label>
+                <select value={form.assignedToId} onChange={(e) => setForm({ ...form, assignedToId: e.target.value })} className="w-full" required>
+                  <option value="">انتخاب اپراتور…</option>
+                  {operators.map((o) => <option key={o.id} value={o.id}>{o.firstName} {o.lastName} — {o.phone}</option>)}
+                </select>
+              </div>
+            )}
             <div className="md:col-span-3 flex justify-end">
               <Button type="submit" className="w-auto" disabled={creating}>
                 {creating ? 'در حال ثبت...' : 'ثبت مشتری'}

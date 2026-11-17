@@ -6,6 +6,13 @@ const { authenticate, requireManager } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
+const userSelect = { id: true, firstName: true, lastName: true };
+const leadInclude = {
+  createdBy: { select: userSelect },
+  contactedBy: { select: userSelect },
+  assignedTo: { select: userSelect },
+};
+
 function todayBounds() {
   const now = new Date();
   const tehran = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Tehran' }));
@@ -14,43 +21,97 @@ function todayBounds() {
   return { start, end };
 }
 
+function guardOperatorOwnership(req, lead) {
+  if (req.user.role !== 'OPERATOR') return null;
+  if (!lead.assignedToId) return 'این مشتری آزاد است؛ ابتدا باید آن را از درخواست‌های آزاد قبول کنید';
+  if (lead.assignedToId !== req.user.id) return 'این مشتری به اپراتور دیگری اختصاص داده شده است';
+  return null;
+}
+
+// استخر مشتریان آزاد — برای اپراتورها (مودال درخواست)
+router.get(
+  '/pool',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'OPERATOR') return res.json({ leads: [] });
+    const leads = await prisma.lead.findMany({
+      where: { assignmentMode: 'OPEN', assignedToId: null, status: 'NEW' },
+      include: leadInclude,
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json({ leads });
+  })
+);
+
+// قبول مشتری آزاد — اتمیک: فقط اولین اپراتور موفق می‌شود
+router.post(
+  '/:id/claim',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    if (req.user.role !== 'OPERATOR') return res.status(403).json({ error: 'فقط اپراتور می‌تواند مشتری آزاد را قبول کند' });
+    const { id } = req.params;
+    const result = await prisma.lead.updateMany({
+      where: { id, assignmentMode: 'OPEN', assignedToId: null, status: 'NEW' },
+      data: { assignedToId: req.user.id, assignmentMode: 'ASSIGNED', claimedAt: new Date() },
+    });
+    if (result.count === 0) {
+      const exists = await prisma.lead.findUnique({ where: { id } });
+      if (!exists) return res.status(404).json({ error: 'مشتری یافت نشد' });
+      return res.status(409).json({ error: 'این مشتری قبلاً توسط اپراتور دیگری قبول شده است' });
+    }
+    const lead = await prisma.lead.findUnique({ where: { id }, include: leadInclude });
+    res.json({ lead });
+  })
+);
+
 router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { from, to, mine, status, search } = req.query;
+    const { from, to, mine, scope, mode, assignedTo, status, search } = req.query;
     const where = {};
+    const and = [];
 
     if (req.user.role === 'OPERATOR') {
-      const { start, end } = todayBounds();
-      where.createdAt = { gte: start, lte: end };
+      if (scope === 'exclusive') {
+        // مشتریان اختصاصی من — بدون محدودیت تاریخ
+        where.assignedToId = req.user.id;
+      } else if (mine) {
+        where.contactedById = req.user.id;
+      } else {
+        // لیست امروز من: اختصاصی‌های امروز + تماس‌های امروز خودم
+        const { start, end } = todayBounds();
+        where.createdAt = { gte: start, lte: end };
+        and.push({ OR: [{ assignedToId: req.user.id }, { contactedById: req.user.id }] });
+      }
+    } else {
+      if (mode === 'open') { where.assignmentMode = 'OPEN'; where.assignedToId = null; }
+      else if (mode === 'assigned') { where.assignmentMode = 'ASSIGNED'; }
+      if (assignedTo) where.assignedToId = String(assignedTo);
     }
 
-    if (mine && req.user.role === 'OPERATOR') {
-      where.contactedById = req.user.id;
-    }
     if (status) where.status = status;
     if (search) {
-      where.OR = [
-        { brandName: { contains: String(search) } },
-        { personName: { contains: String(search) } },
-        { phone: { contains: String(search) } },
-        { businessArea: { contains: String(search) } },
-        { city: { contains: String(search) } },
-      ];
+      and.push({
+        OR: [
+          { brandName: { contains: String(search) } },
+          { personName: { contains: String(search) } },
+          { phone: { contains: String(search) } },
+          { businessArea: { contains: String(search) } },
+          { city: { contains: String(search) } },
+        ],
+      });
     }
     if (from || to) {
-      where.createdAt = {};
+      where.createdAt = where.createdAt || {};
       if (from) where.createdAt.gte = new Date(from);
       if (to) where.createdAt.lte = new Date(to);
     }
+    if (and.length) where.AND = and;
 
     const leads = await prisma.lead.findMany({
       where,
-      include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-        contactedBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: leadInclude,
       orderBy: { createdAt: 'desc' },
     });
     res.json({ leads });
@@ -62,26 +123,32 @@ router.post(
   authenticate,
   requireManager,
   asyncHandler(async (req, res) => {
-    const { brandName, personName, address, city, businessArea, description, phone } = req.body || {};
+    const { brandName, personName, address, city, businessArea, description, phone, assignmentMode, assignedToId } = req.body || {};
     if (!brandName || !personName || !address || !businessArea || !phone) {
       return res.status(400).json({ error: 'تمام فیلدهای الزامی را پر کنید' });
+    }
+    const mode = assignmentMode === 'ASSIGNED' ? 'ASSIGNED' : 'OPEN';
+    let assignee = null;
+    if (mode === 'ASSIGNED') {
+      if (!assignedToId) return res.status(400).json({ error: 'برای حالت اختصاصی، اپراتور را انتخاب کنید' });
+      assignee = await prisma.user.findFirst({ where: { id: String(assignedToId), role: 'OPERATOR', isActive: true } });
+      if (!assignee) return res.status(400).json({ error: 'اپراتور انتخاب‌شده یافت نشد یا غیرفعال است' });
     }
 
     const lead = await prisma.lead.create({
       data: {
-        brandName,
-        personName,
-        address,
+        brandName, personName, address,
         city: city || null,
         businessArea,
         description: description || null,
         phone,
         status: 'NEW',
         createdById: req.user.id,
+        assignmentMode: mode,
+        assignedToId: assignee ? assignee.id : null,
+        claimedAt: assignee ? new Date() : null,
       },
-      include: {
-        createdBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: leadInclude,
     });
     res.status(201).json({ lead });
   })
@@ -93,9 +160,10 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { contactNote, suggestedAmount } = req.body || {};
-
     const lead = await prisma.lead.findUnique({ where: { id } });
-    if (!lead) return res.status(404).json({ error: 'لید یافت نشد' });
+    if (!lead) return res.status(404).json({ error: 'مشتری یافت نشد' });
+    const guard = guardOperatorOwnership(req, lead);
+    if (guard) return res.status(403).json({ error: guard });
 
     const updated = await prisma.lead.update({
       where: { id },
@@ -106,9 +174,7 @@ router.patch(
         contactedAt: new Date(),
         contactedById: req.user.id,
       },
-      include: {
-        contactedBy: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: leadInclude,
     });
     res.json({ lead: updated });
   })
@@ -120,18 +186,15 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { contactNote } = req.body || {};
-
     const lead = await prisma.lead.findUnique({ where: { id } });
-    if (!lead) return res.status(404).json({ error: 'لید یافت نشد' });
+    if (!lead) return res.status(404).json({ error: 'مشتری یافت نشد' });
+    const guard = guardOperatorOwnership(req, lead);
+    if (guard) return res.status(403).json({ error: guard });
 
     const updated = await prisma.lead.update({
       where: { id },
-      data: {
-        status: 'CANCELLED',
-        contactNote: contactNote || null,
-        contactedAt: new Date(),
-        contactedById: req.user.id,
-      },
+      data: { status: 'CANCELLED', contactNote: contactNote || null, contactedAt: new Date(), contactedById: req.user.id },
+      include: leadInclude,
     });
     res.json({ lead: updated });
   })
@@ -143,10 +206,9 @@ router.patch(
   requireManager,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { brandName, personName, address, city, businessArea, description, phone, status } = req.body || {};
-
+    const { brandName, personName, address, city, businessArea, description, phone, status, assignmentMode, assignedToId } = req.body || {};
     const lead = await prisma.lead.findUnique({ where: { id } });
-    if (!lead) return res.status(404).json({ error: 'لید یافت نشد' });
+    if (!lead) return res.status(404).json({ error: 'مشتری یافت نشد' });
 
     const data = {};
     if (brandName !== undefined) data.brandName = brandName;
@@ -157,8 +219,15 @@ router.patch(
     if (description !== undefined) data.description = description;
     if (phone !== undefined) data.phone = phone;
     if (status) data.status = status;
+    if (assignmentMode === 'OPEN') { data.assignmentMode = 'OPEN'; data.assignedToId = null; data.claimedAt = null; }
+    if (assignmentMode === 'ASSIGNED' || assignedToId !== undefined) {
+      if (!assignedToId) return res.status(400).json({ error: 'برای حالت اختصاصی، اپراتور را انتخاب کنید' });
+      data.assignmentMode = 'ASSIGNED';
+      data.assignedToId = String(assignedToId);
+      data.claimedAt = new Date();
+    }
 
-    const updated = await prisma.lead.update({ where: { id }, data });
+    const updated = await prisma.lead.update({ where: { id }, data, include: leadInclude });
     res.json({ lead: updated });
   })
 );
@@ -168,8 +237,7 @@ router.delete(
   authenticate,
   requireManager,
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    await prisma.lead.delete({ where: { id } });
+    await prisma.lead.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
   })
 );

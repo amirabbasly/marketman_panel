@@ -1,13 +1,83 @@
 #!/usr/bin/env bash
-# Marketman CRM — یک دستور اجرا/بروزرسانی
+# Marketman CRM — اجرا / آپدیت با یک دستور:  ./deploy.sh
 set -e
+cd "$(dirname "$0")"
 
-echo ">>> دریافت آخرین کد..."
-git pull origin main
+if [ ! -f .env ]; then
+  echo ">>> ساخت خودکار فایل .env ..."
+  cp .env.example .env
+  if command -v openssl >/dev/null 2>&1; then
+    SECRET=$(openssl rand -hex 32)
+    sed -i "s|JWT_SECRET=.*|JWT_SECRET=${SECRET}|" .env || true
+  fi
+  echo ">>> فایل .env ساخته شد. در صورت نیاز ADMIN_PASSWORD و پورت‌ها را در آن تغییر دهید."
+fi
 
-echo ">>> ساخت و راه‌اندازی کانتینرها..."
-docker compose up -d --build
+echo ">>> دریافت آخرین کد از گیت..."
+git pull --ff-only || echo "!! git pull انجام نشد (ادامه با کد فعلی)"
 
-echo ">>> انجام شد! پنل بازاریمن اجرا شد."
-echo "   سایت: http://panel.marketmanai.ir  (از طریق nginx)"
-echo "   بک‌اند: http://localhost:5000/api"
+# خواندن پورت‌ها از .env (با همان پیش‌فرض‌های docker-compose)
+FRONTEND_PORT=$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); FRONTEND_PORT=${FRONTEND_PORT:-3001}
+BACKEND_PORT=$(grep -E '^BACKEND_PORT=' .env | cut -d= -f2); BACKEND_PORT=${BACKEND_PORT:-5100}
+DB_PORT=$(grep -E '^DB_PORT=' .env | cut -d= -f2); DB_PORT=${DB_PORT:-5433}
+
+# هماهنگ‌کردن خودکار پورت‌های nginx داخل ریپو با .env (اولین proxy_pass = فرانت، بقیه = بک‌اند)
+awk -v fe="$FRONTEND_PORT" -v be="$BACKEND_PORT" '
+  $0 !~ /^[[:space:]]*#/ && /proxy_pass http:\/\/127\.0\.0\.1:/ { n++; if (n==1) sub(/:[0-9]+;/, ":" fe ";"); else sub(/:[0-9]+;/, ":" be ";") }
+  { print }' nginx/marketman.conf > nginx/marketman.conf.tmp && mv nginx/marketman.conf.tmp nginx/marketman.conf
+
+echo ">>> ساخت و راه‌اندازی کانتینرها (PostgreSQL + Backend + Frontend)..."
+if ! docker compose up -d --build; then
+  echo ""
+  echo "❌ خطا در بالا آمدن کانتینرها — اگر خطای «address already in use» دیدید،"
+  echo "   یعنی یکی از پورت‌های ${FRONTEND_PORT} (فرانت) / ${BACKEND_PORT} (بک‌اند) / ${DB_PORT} (دیتابیس) روی سرور اشغال است."
+  echo "   پورت اشغال را پیدا کنید:   sudo ss -tlnp | grep -E '${FRONTEND_PORT}|${BACKEND_PORT}|${DB_PORT}'"
+  echo "   سپس در فایل .env پورت آزاد دیگری بگذارید و دوباره ./deploy.sh را اجرا کنید."
+  exit 1
+fi
+
+# ---------- بررسی سلامت سرویس‌ها (جلوگیری از 502 مبهم) ----------
+echo ">>> بررسی سلامت بک‌اند و فرانت‌اند..."
+BACKEND_OK=0; FRONTEND_OK=0
+for i in $(seq 1 45); do
+  if [ "$BACKEND_OK" = 0 ] && curl -sf "http://127.0.0.1:${BACKEND_PORT}/api/health" >/dev/null 2>&1; then BACKEND_OK=1; echo "   ✔ بک‌اند سالم است (پورت ${BACKEND_PORT})"; fi
+  if [ "$FRONTEND_OK" = 0 ] && curl -sf "http://127.0.0.1:${FRONTEND_PORT}/login" >/dev/null 2>&1; then FRONTEND_OK=1; echo "   ✔ فرانت‌اند سالم است (پورت ${FRONTEND_PORT})"; fi
+  [ "$BACKEND_OK" = 1 ] && [ "$FRONTEND_OK" = 1 ] && break
+  sleep 2
+done
+
+if [ "$BACKEND_OK" = 0 ] || [ "$FRONTEND_OK" = 0 ]; then
+  echo ""
+  echo "❌ یکی از سرویس‌ها بالا نیامد (بک‌اند: ${BACKEND_OK} / فرانت‌اند: ${FRONTEND_OK}) — آخرین لاگ‌ها:"
+  docker compose ps || true
+  echo "----- لاگ بک‌اند -----";  docker compose logs --tail=60 backend  || true
+  echo "----- لاگ فرانت‌اند -----"; docker compose logs --tail=30 frontend || true
+  echo ""
+  echo "راهنما: علت خطا در لاگ‌های بالا مشخص است. بعد از رفع آن، دوباره ./deploy.sh را اجرا کنید."
+  exit 1
+fi
+
+# ---------- هماهنگ‌کردن خودکار nginx روی سرور ----------
+if [ -d /etc/nginx/sites-available ] && sudo -n true 2>/dev/null; then
+  echo ">>> نصب/به‌روزرسانی کانفیگ nginx و ریلود..."
+  sudo cp nginx/marketman.conf /etc/nginx/sites-available/marketman
+  sudo ln -sf /etc/nginx/sites-available/marketman /etc/nginx/sites-enabled/marketman
+  if sudo nginx -t; then
+    sudo systemctl reload nginx && echo "   ✔ nginx ریلود شد"
+  else
+    echo "   !! تست nginx ناموفق بود؛ خروجی خطای بالا را بررسی کنید (کانفیگ قبلی دست نخورده است)"
+  fi
+else
+  echo ">>> نکته: برای هماهنگی nginx این دستورات را یک‌بار با sudo اجرا کنید:"
+  echo "   sudo cp nginx/marketman.conf /etc/nginx/sites-available/marketman"
+  echo "   sudo ln -sf /etc/nginx/sites-available/marketman /etc/nginx/sites-enabled/marketman"
+  echo "   sudo nginx -t && sudo systemctl reload nginx"
+fi
+
+echo ""
+echo ">>> وضعیت نهایی سرویس‌ها:"
+docker compose ps
+echo ""
+echo "✅ پنل مارکت‌من آماده است: https://panel.marketmanai.ir"
+echo "   فرانت‌اند: http://127.0.0.1:${FRONTEND_PORT}   بک‌اند: http://127.0.0.1:${BACKEND_PORT}/api/health"
+echo "   مدیر پیش‌فرض: مقادیر ADMIN_EMAIL / ADMIN_PASSWORD در فایل .env"

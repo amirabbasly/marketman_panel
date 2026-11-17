@@ -18,6 +18,11 @@ enum LeadStatus {
   CANCELLED
 }
 
+enum AssignmentMode {
+  OPEN
+  ASSIGNED
+}
+
 enum ChangeRequestStatus {
   PENDING
   APPROVED
@@ -36,11 +41,13 @@ model User {
   nationalIdPhoto   String?
   birthDate         DateTime?
   isActive          Boolean      @default(true)
+  levelOverride     Int?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   leads             Lead[]       @relation("LeadCreator")
   contactedLeads    Lead[]       @relation("LeadContactedBy")
+  assignedLeads     Lead[]       @relation("LeadAssignedTo")
   changeRequests    ChangeRequest[]
   reviewedRequests  ChangeRequest[] @relation("Reviewer")
 }
@@ -60,11 +67,15 @@ model Lead {
   contactedAt       DateTime?
   contactedById     String?
   createdById       String?
+  assignmentMode    AssignmentMode @default(OPEN)
+  assignedToId      String?
+  claimedAt         DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   createdBy         User?        @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
   contactedBy       User?        @relation("LeadContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
+  assignedTo        User?        @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
 }
 
 model ChangeRequest {

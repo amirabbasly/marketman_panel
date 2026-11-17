@@ -34,7 +34,7 @@ export default function OperatorsPage() {
   if (!checked) return null;
 
   const filtered = users.filter((u) =>
-    `${u.firstName} ${u.lastName} ${u.nationalId || ''} ${u.phone || ''}`.includes(search)
+    `${u.firstName} ${u.lastName} ${u.nationalId || ''} ${u.phone || ''} ${u.email || ''}`.includes(search)
   );
 
   return (
@@ -42,7 +42,7 @@ export default function OperatorsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-emerald-600" />
-          <h1 className="text-2xl font-bold text-gray-900">مدیریت اپراتور‌ها</h1>
+          <h1 className="page-title">کاربران سیستم و اپراتورها</h1>
         </div>
         <Link href="/operators/create">
           <Button>افزودن اپراتور جدید</Button>
@@ -52,7 +52,7 @@ export default function OperatorsPage() {
       <div className="flex gap-4">
         <div className="flex-1">
           <Input
-            placeholder="جستجو با نام، کد ملی یا شماره تماس..."
+            placeholder="جستجو با نام، کد ملی، شماره تماس یا نام کاربری..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             leftIcon={<Search className="w-4 h-4" />}
@@ -66,7 +66,7 @@ export default function OperatorsPage() {
         ) : filtered.length ? (
           filtered.map((u) => <OperatorCard key={u.id} u={u} />)
         ) : (
-          <div className="col-span-full text-center py-10 text-gray-500">اپراتور یافت نشد</div>
+          <div className="col-span-full text-center py-10 text-gray-500">کاربری یافت نشد</div>
         )}
       </div>
     </div>
@@ -84,14 +84,16 @@ function OperatorCard({ u }: { u: any }) {
           <div>
             <p className="font-semibold text-gray-900">{u.firstName} {u.lastName}</p>
             <p className="text-xs text-gray-500">کد ملی: {u.nationalId || '—'}</p>
+            <p className="text-xs text-gray-400" dir="ltr">{u.email}</p>
           </div>
         </div>
         <p className="text-sm text-gray-600 mb-2">
           📞 {u.phone || '—'} | 📅 {formatDate(u.birthDate)}
         </p>
-        <Badge variant={u.isActive ? 'success' : 'danger'}>
-          {u.isActive ? 'فعال' : 'غیرفعال'}
-        </Badge>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant={u.role === 'MANAGER' ? 'info' : 'warning'}>{u.role === 'MANAGER' ? 'مدیر' : 'اپراتور'}</Badge>
+          <Badge variant={u.isActive ? 'success' : 'danger'}>{u.isActive ? 'فعال' : 'غیرفعال'}</Badge>
+        </div>
         <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
           <span>درخواست‌های تغییر: {u._count?.changeRequests || 0}</span>
           <span>تماس‌ها: {u._count?.contactedLeads || 0}</span>

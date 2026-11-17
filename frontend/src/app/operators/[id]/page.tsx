@@ -22,7 +22,7 @@ export default function OperatorDetailPage({ params }: { params: { id: string } 
   const [error, setError] = useState('');
 
   const [form, setForm] = useState({
-    firstName: '', lastName: '', nationalId: '', phone: '', birthDate: '', isActive: true,
+    firstName: '', lastName: '', nationalId: '', phone: '', birthDate: '', isActive: true, email: '', password: '',
   });
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,6 +39,8 @@ export default function OperatorDetailPage({ params }: { params: { id: string } 
         phone: u.phone || '',
         birthDate: u.birthDate ? u.birthDate.slice(0, 10) : '',
         isActive: u.isActive,
+        email: u.email || '',
+        password: '',
       });
       setLoading(false);
     });
@@ -55,6 +57,8 @@ export default function OperatorDetailPage({ params }: { params: { id: string } 
     fd.append('phone', form.phone);
     fd.append('birthDate', form.birthDate);
     fd.append('isActive', String(form.isActive));
+    fd.append('email', form.email);
+    if (form.password) fd.append('password', form.password);
     if (file) fd.append('nationalIdPhoto', file);
 
     try {
@@ -63,7 +67,7 @@ export default function OperatorDetailPage({ params }: { params: { id: string } 
       const u = r.data.user;
       setUser(u);
       setRequests(u.changeRequests || []);
-      setForm({ ...form, birthDate: u.birthDate ? u.birthDate.slice(0, 10) : '', isActive: u.isActive });
+      setForm({ ...form, email: u.email || '', password: '', birthDate: u.birthDate ? u.birthDate.slice(0, 10) : '', isActive: u.isActive });
     } catch (err: any) {
       setError(err.response?.data?.error || 'خطا در به‌روزرسانی');
     } finally {
@@ -139,6 +143,15 @@ export default function OperatorDetailPage({ params }: { params: { id: string } 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">عکس کارت ملی / شناسنامه (برای تغییر)</label>
                 <input type="file" accept="image/*,application/pdf" className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">نام کاربری (ایمیل ورود)</label>
+                <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@marketman.ir" />
+                <p className="mt-1 text-[11px] text-gray-400">مدیر بدون نیاز به درخواست، مستقیم نام کاربری و رمز را تغییر می‌دهد. اپراتور با شماره تماس یا همین نام کاربری وارد می‌شود.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">رمز عبور جدید (خالی = بدون تغییر)</label>
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
               </div>
               <Button type="submit" className="w-full" disabled={saving}>
                 {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
