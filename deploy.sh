@@ -14,7 +14,7 @@ if [ ! -f .env ]; then
 fi
 
 # خواندن پورت‌ها از .env (با همان پیش‌فرض‌های docker-compose)
-FRONTEND_PORT=$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); FRONTEND_PORT=${FRONTEND_PORT:-3100}
+FRONTEND_PORT=$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); FRONTEND_PORT=${FRONTEND_PORT:-3001}
 BACKEND_PORT=$(grep -E '^BACKEND_PORT=' .env | cut -d= -f2); BACKEND_PORT=${BACKEND_PORT:-5100}
 
 # هماهنگ‌کردن خودکار پورت‌های nginx با .env (اولین proxy_pass = فرانت، بقیه = بک‌اند؛ خطوط کامنت دست نمی‌خورند)

@@ -1,7 +1,7 @@
 # راهنمای دیپلوی پنل CRM مارکت‌من (Marketman)
 
 - **دامنه:** `panel.marketmanai.ir`
-- **مسیر روی سرور:** `/var/www/marketman_panel` (کنار دو سایت دیگر شما؛ هیچ تداخلی ندارد، چون فقط پورت‌های داخلی **3100 (فرانت) / 5100 (بک‌اند) / 5433 (دیتابیس)** روی `127.0.0.1` استفاده می‌شود تا با سایت‌های دیگر (که معمولاً 3000/5000 هستند) تداخل نکند)
+- **مسیر روی سرور:** `/var/www/marketman_panel` (کنار دو سایت دیگر شما؛ هیچ تداخلی ندارد، چون فقط پورت‌های داخلی **3001 (فرانت) / 5100 (بک‌اند) / 5433 (دیتابیس)** روی `127.0.0.1` استفاده می‌شود تا با سایت‌های دیگر (که معمولاً 3000/5000 هستند) تداخل نکند)
 - **استک:** Next.js 14 + Node.js/Express + PostgreSQL 15 + Docker Compose + Nginx + Cloudflare
 - **ریپو:** https://github.com/amirabbasly/marketman_panel
 
@@ -50,7 +50,7 @@ sudo ln -s /etc/nginx/sites-available/marketman /etc/nginx/sites-enabled/marketm
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Nginx: درخواست `/` ← Next.js ‏(3100)، `/api` و `/uploads` ← Express ‏(5100). این پورت‌ها از `FRONTEND_PORT` و `BACKEND_PORT` در `.env` خوانده می‌شوند؛ اگر عوضشان کردید، `proxy_pass`های فایل nginx را هم به همان پورت‌ها تغییر دهید.
+Nginx: درخواست `/` ← Next.js ‏(3001)، `/api` و `/uploads` ← Express ‏(5100). این پورت‌ها از `FRONTEND_PORT` و `BACKEND_PORT` در `.env` خوانده می‌شوند؛ اگر عوضشان کردید، `proxy_pass`های فایل nginx را هم به همان پورت‌ها تغییر دهید.
 
 ## ۶) Cloudflare
 
@@ -68,7 +68,7 @@ Nginx: درخواست `/` ← Next.js ‏(3100)، `/api` و `/uploads` ← Expre
 یعنی آن پورت روی سرور قبلاً توسط سایت/سرویس دیگری گرفته شده است. پیدا کنید چه چیزی روی پورت است:
 
 ```bash
-sudo ss -tlnp | grep -E '3100|5100|5433'
+sudo ss -tlnp | grep -E '3001|5100|5433'
 docker ps   # اگر کانتینر قدیمی همین پروژه بود: docker compose down و دوباره ./deploy.sh
 ```
 
