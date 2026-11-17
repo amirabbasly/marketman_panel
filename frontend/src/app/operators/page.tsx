@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { isManager } from '@/lib/auth';
 import { formatDate } from '@/lib/utils';
@@ -11,18 +12,26 @@ import { Input } from '@/components/ui/input';
 import { Users, Search } from 'lucide-react';
 import Link from 'next/link';
 
-if (typeof window !== 'undefined' && !isManager()) {
-  window.location.href = '/my-leads';
-}
-
 export default function OperatorsPage() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    api.get('/users').then((r) => { setUsers(r.data.users || r.data); setLoading(false); });
-  }, []);
+    if (!isManager()) {
+      router.replace('/my-leads');
+      return;
+    }
+    api.get('/users').then((r) => {
+      setUsers(r.data.users || r.data);
+      setLoading(false);
+      setChecked(true);
+    });
+  }, [router]);
+
+  if (!checked) return null;
 
   const filtered = users.filter((u) =>
     `${u.firstName} ${u.lastName} ${u.nationalId || ''} ${u.phone || ''}`.includes(search)

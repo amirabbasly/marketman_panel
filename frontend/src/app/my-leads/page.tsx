@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { isOperator } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -9,20 +10,25 @@ import { LeadRow } from '@/components/LeadRow';
 import { PhoneCall } from 'lucide-react';
 import Link from 'next/link';
 
-if (typeof window !== 'undefined' && !isOperator()) {
-  window.location.href = '/dashboard';
-}
-
 export default function MyLeadsPage() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isOperator()) {
+      router.replace('/dashboard');
+      return;
+    }
     api.get('/leads?mine=true').then((r) => {
       setLeads(r.data.leads || []);
       setLoading(false);
+      setChecked(true);
     });
-  }, []);
+  }, [router]);
+
+  if (!checked) return null;
 
   return (
     <div className="space-y-6">

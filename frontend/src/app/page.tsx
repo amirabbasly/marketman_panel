@@ -2,17 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getToken } from '@/lib/auth';
+import { getToken, getUser } from '@/lib/auth';
 
 export default function Home() {
   const router = useRouter();
   useEffect(() => {
-    if (getToken()) {
-      const user = JSON.parse(localStorage.getItem('mm_user') || 'null');
-      router.replace(user?.role === 'MANAGER' ? '/dashboard' : '/my-leads');
-    } else {
+    const token = getToken();
+    if (!token) {
       router.replace('/login');
+      return;
     }
+    const user = getUser();
+    if (!user || !user.role) {
+      router.replace('/login');
+      return;
+    }
+    router.replace(user.role === 'MANAGER' ? '/dashboard' : '/my-leads');
   }, [router]);
   return null;
 }

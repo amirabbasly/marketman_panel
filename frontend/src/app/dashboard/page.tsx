@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { isManager } from '@/lib/auth';
 import { toPersianDigits } from '@/lib/utils';
@@ -11,18 +12,22 @@ import {
 } from 'recharts';
 import { BarChart as BarChartIcon, Users as UsersIcon, PhoneCall as PhoneIcon } from 'lucide-react';
 
-if (typeof window !== 'undefined' && !isManager()) {
-  window.location.href = '/my-leads';
-}
-
 export default function DashboardPage() {
+  const router = useRouter();
+  const [checked, setChecked] = useState(false);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isManager()) {
+      router.replace('/my-leads');
+      return;
+    }
     api.get('/stats/summary').then((r) => { setData(r.data); setLoading(false); });
-  }, []);
+    setChecked(true);
+  }, [router]);
 
+  if (!checked) return null;
   if (loading) return <div className="text-center py-10">در حال بارگذاری...</div>;
   if (!data) return null;
 
