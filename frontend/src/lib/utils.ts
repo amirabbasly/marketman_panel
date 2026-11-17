@@ -54,3 +54,12 @@ export function statusColor(status: string): string {
   };
   return map[status] || 'bg-gray-100 text-gray-700';
 }
+
+/** نمایش عدد با جداکننده سه‌رقمی و ارقام فارسی: ۳۰٬۰۰۰٬۰۰۰ */
+export function fmtNum(n: number | string | null | undefined): string {
+  const v = Number(n || 0);
+  return v.toLocaleString('fa-IR');
+}
+export function fmtMoney(n: number | string | null | undefined): string {
+  return `${fmtNum(n)} تومان`;
+}

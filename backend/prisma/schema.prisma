@@ -18,6 +18,18 @@ enum LeadStatus {
   CANCELLED
 }
 
+enum ProjectStage {
+  NONE
+  PENDING_APPROVAL
+  COMPLETED
+  REJECTED
+}
+
+enum AssignmentMode {
+  OPEN
+  ASSIGNED
+}
+
 enum ChangeRequestStatus {
   PENDING
   APPROVED
@@ -36,11 +48,16 @@ model User {
   nationalIdPhoto   String?
   birthDate         DateTime?
   isActive          Boolean      @default(true)
+  levelOverride     Int?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   leads             Lead[]       @relation("LeadCreator")
   contactedLeads    Lead[]       @relation("LeadContactedBy")
+  assignedLeads     Lead[]       @relation("LeadAssignedTo")
+  walletTransactions WalletTransaction[]
+  expensesCreated   Expense[]    @relation("ExpenseCreator")
+  invoicesCreated   Invoice[]    @relation("InvoiceCreator")
   changeRequests    ChangeRequest[]
   reviewedRequests  ChangeRequest[] @relation("Reviewer")
 }
@@ -58,13 +75,65 @@ model Lead {
   contactNote       String?
   suggestedAmount   Decimal?
   contactedAt       DateTime?
+  meetingAt         DateTime?
+  projectStage      ProjectStage @default(NONE)
+  finalPrice        Decimal?
+  completedAt       DateTime?
   contactedById     String?
   createdById       String?
+  assignmentMode    AssignmentMode @default(OPEN)
+  assignedToId      String?
+  claimedAt         DateTime?
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   createdBy         User?        @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
   contactedBy       User?        @relation("LeadContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
+  assignedTo        User?        @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  walletTransaction WalletTransaction?
+  invoice           Invoice?
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  title       String
+  amount      Decimal
+  category    String?
+  description String?
+  invoiceUrl  String?
+  expenseDate DateTime
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy   User?    @relation("ExpenseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model Invoice {
+  id               String   @id @default(uuid())
+  number           String   @unique
+  leadId           String   @unique
+  operatorId       String?
+  grossAmount      Decimal
+  commissionAmount Decimal  @default(0)
+  netAmount        Decimal
+  fileUrl          String?
+  createdById      String?
+  createdAt        DateTime @default(now())
+
+  lead             Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy        User?    @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  operatorId  String
+  leadId      String   @unique
+  amount      Decimal
+  description String?
+  createdAt   DateTime @default(now())
+
+  operator    User     @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
 model ChangeRequest {

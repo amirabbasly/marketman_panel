@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
+import { JalaliDatePicker } from '@/components/ui/datepicker';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -102,7 +103,7 @@ export default function ChangeRequestPage() {
             {field === 'birthDate' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">تاریخ تولد جدید</label>
-                <Input type="date" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+                <JalaliDatePicker value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="تاریخ تولد جدید (شمسی)" />
               </div>
             )}
             <p className="text-xs text-gray-500">بعد از ثبت، مدیر درخواست را بررسی و تایید یا رد می‌کند.</p>

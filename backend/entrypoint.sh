@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+mkdir -p /app/uploads/profiles
 echo ">>> Generating Prisma client..."
 npx prisma generate
 
