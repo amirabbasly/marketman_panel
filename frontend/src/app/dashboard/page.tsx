@@ -31,7 +31,7 @@ export default function DashboardPage() {
   if (loading) return <div className="text-center py-10">در حال بارگذاری...</div>;
   if (!data) return null;
 
-  const { summary, byStatus, topAreas, topOperators, topCancellations, topCities } = data;
+  const { summary, byStatus, topAreas, topOperators, topCancellations, topCities, operatorStats = [], bestOperator, worstOperator, cityStats = [], bestCity, worstCity } = data;
 
   return (
     <div className="space-y-6">
@@ -50,6 +50,19 @@ export default function DashboardPage() {
         <StatCard title="درآمد پیشنهادی (تومان)" value={toPersianDigits(summary.revenue)} icon={<BarChartIcon className="w-5 h-5" />} color="bg-purple-500" />
         <StatCard title="نرخ تبدیل" value={`${summary.conversionRate}%`} color="bg-indigo-500" />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Insight title="🏆 بیشترین فروش — اپراتور" value={bestOperator ? `${bestOperator.operator}` : '—'} sub={bestOperator ? `${bestOperator.sales} فروش • ${Number(bestOperator.revenue).toLocaleString('fa-IR')} تومان` : 'داده‌ای نیست'} />
+        <Insight title="کمترین فروش — اپراتور" value={worstOperator ? `${worstOperator.operator}` : '—'} sub={worstOperator ? `${worstOperator.sales} فروش • ${worstOperator.cancels} کنسلی` : 'داده‌ای نیست'} />
+        <Insight title="🏙️ پرفروش‌ترین شهر" value={bestCity?.city || '—'} sub={bestCity ? `${bestCity.sales} فروش • ${bestCity.cancels} کنسلی` : 'داده‌ای نیست'} />
+        <Insight title="کم‌فروش‌ترین شهر" value={worstCity?.city || '—'} sub={worstCity ? `${worstCity.sales} فروش • ${worstCity.cancels} کنسلی` : 'داده‌ای نیست'} />
+      </div>
+      {(operatorStats.length > 0 || cityStats.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <RankTable title="رتبه‌بندی کامل اپراتورها (فروش ↓)" rows={operatorStats.map((o:any)=>({name:o.operator, a:`${o.sales} فروش`, b:`${o.cancels} کنسلی`, c:`${Number(o.revenue).toLocaleString('fa-IR')} تومان`}))} />
+          <RankTable title="رتبه‌بندی کامل شهرها (فروش ↓)" rows={cityStats.map((c:any)=>({name:c.city, a:`${c.sales} فروش`, b:`${c.cancels} کنسلی`, c:`${Number(c.revenue).toLocaleString('fa-IR')} تومان`}))} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="p-5">
@@ -163,6 +176,9 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+function Insight({ title, value, sub }: any) { return <Card className="p-5 border-r-4 border-r-emerald-500"><p className="text-xs text-gray-500">{title}</p><p className="mt-1 text-lg font-black text-gray-900">{value}</p><p className="text-xs text-gray-500">{sub}</p></Card>; }
+function RankTable({ title, rows }: any) { return <Card><div className="p-5 border-b border-gray-100"><h3 className="text-sm font-semibold">{title}</h3></div><div className="max-h-72 overflow-auto">{rows.length ? rows.map((r:any,i:number)=>(<div key={i} className="flex items-center justify-between border-b border-gray-50 px-5 py-3 text-sm"><span className="font-medium">{i+1}. {r.name}</span><span className="flex gap-3 text-xs text-gray-500"><span>{r.a}</span><span>{r.b}</span><span className="font-bold text-emerald-600">{r.c}</span></span></div>)) : <p className="p-5 text-center text-sm text-gray-500">داده‌ای ثبت نشده است</p>}</div></Card>; }
 
 function StatCard({ title, value, color, icon }: { title: string; value: any; color: string; icon?: React.ReactNode }) {
   return (

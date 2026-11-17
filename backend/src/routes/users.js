@@ -9,9 +9,12 @@ const { authenticate, requireManager } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
+const fs = require('fs');
+const uploadDir = path.join(__dirname, '../../uploads/profiles');
+fs.mkdirSync(uploadDir, { recursive: true });
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/profiles'));
+    cb(null, uploadDir);
   },
   filename: (_req, file, cb) => {
     const safe = file.originalname.replace(/\s+/g, '_').replace(/[^أ-یa-zA-Z0-9_.-]/g, '_');
@@ -79,70 +82,6 @@ router.post(
       },
     });
     res.status(201).json({ user });
-  })
-);
-
-router.get(
-  '/:id',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    if (req.user.role !== 'MANAGER' && req.user.id !== id) {
-      return res.status(403).json({ error: 'دسترسی غیرمجاز' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true, email: true, phone: true, role: true, firstName: true,
-        lastName: true, nationalId: true, nationalIdPhoto: true, birthDate: true,
-        isActive: true, createdAt: true, updatedAt: true,
-        changeRequests: {
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, field: true, oldValue: true, newValue: true, photoUrl: true, status: true, reviewedAt: true, createdAt: true },
-        },
-        _count: { select: { contactedLeads: true } },
-      },
-    });
-    if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
-    res.json({ user });
-  })
-);
-
-router.patch(
-  '/:id',
-  authenticate,
-  requireManager,
-  upload.single('nationalIdPhoto'),
-  asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { firstName, lastName, nationalId, phone, birthDate, password, isActive } = req.body || {};
-
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
-    if (user.role !== 'OPERATOR') {
-      return res.status(400).json({ error: 'فقط می‌توان اطلاعات اپراتور را تغییر داد' });
-    }
-
-    const data = {};
-    if (firstName !== undefined) data.firstName = firstName;
-    if (lastName !== undefined) data.lastName = lastName;
-    if (nationalId !== undefined) data.nationalId = nationalId;
-    if (phone !== undefined) data.phone = phone;
-    if (birthDate !== undefined) data.birthDate = birthDate ? new Date(birthDate) : null;
-    if (password) data.password = await bcrypt.hash(password, 10);
-    if (isActive !== undefined) data.isActive = isActive === 'true' || isActive === true;
-    if (req.file) data.nationalIdPhoto = `/uploads/profiles/${req.file.filename}`;
-
-    const updated = await prisma.user.update({
-      where: { id },
-      data,
-      select: {
-        id: true, firstName: true, lastName: true, nationalId: true,
-        phone: true, birthDate: true, nationalIdPhoto: true, isActive: true, updatedAt: true,
-      },
-    });
-    res.json({ user: updated });
   })
 );
 
@@ -220,6 +159,7 @@ router.patch(
     } else if (cr.newValue !== null && cr.newValue !== undefined) {
       if (cr.field === 'birthDate') updateData.birthDate = new Date(cr.newValue);
       else updateData[cr.field] = cr.newValue;
+      if (cr.field === 'phone') updateData.email = `${cr.newValue}@marketman.local`;
     }
 
     await prisma.user.update({ where: { id: cr.operatorId }, data: updateData });
@@ -250,6 +190,71 @@ router.patch(
       data: { status: 'REJECTED', reviewedAt: new Date(), reviewedById: req.user.id },
     });
     res.json({ changeRequest: updated });
+  })
+);
+
+
+router.get(
+  '/:id',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (req.user.role !== 'MANAGER' && req.user.id !== id) {
+      return res.status(403).json({ error: 'دسترسی غیرمجاز' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true, email: true, phone: true, role: true, firstName: true,
+        lastName: true, nationalId: true, nationalIdPhoto: true, birthDate: true,
+        isActive: true, createdAt: true, updatedAt: true,
+        changeRequests: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, field: true, oldValue: true, newValue: true, photoUrl: true, status: true, reviewedAt: true, createdAt: true },
+        },
+        _count: { select: { contactedLeads: true } },
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
+    res.json({ user });
+  })
+);
+
+router.patch(
+  '/:id',
+  authenticate,
+  requireManager,
+  upload.single('nationalIdPhoto'),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { firstName, lastName, nationalId, phone, birthDate, password, isActive } = req.body || {};
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: 'کاربر یافت نشد' });
+    if (user.role !== 'OPERATOR') {
+      return res.status(400).json({ error: 'فقط می‌توان اطلاعات اپراتور را تغییر داد' });
+    }
+
+    const data = {};
+    if (firstName !== undefined) data.firstName = firstName;
+    if (lastName !== undefined) data.lastName = lastName;
+    if (nationalId !== undefined) data.nationalId = nationalId;
+    if (phone !== undefined) { data.phone = phone; data.email = `${phone}@marketman.local`; }
+    if (birthDate !== undefined) data.birthDate = birthDate ? new Date(birthDate) : null;
+    if (password) data.password = await bcrypt.hash(password, 10);
+    if (isActive !== undefined) data.isActive = isActive === 'true' || isActive === true;
+    if (req.file) data.nationalIdPhoto = `/uploads/profiles/${req.file.filename}`;
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true, firstName: true, lastName: true, nationalId: true,
+        phone: true, birthDate: true, nationalIdPhoto: true, isActive: true, updatedAt: true,
+      },
+    });
+    res.json({ user: updated });
   })
 );
 

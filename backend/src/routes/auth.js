@@ -29,12 +29,18 @@ const userFields = {
 router.post(
   '/login',
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ error: 'ایمیل و رمز عبور الزامی است' });
+    const { email, password, role } = req.body || {};
+    const identifier = String(email || req.body?.identifier || '').trim();
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'ایمیل/شماره تماس و رمز عبور الزامی است' });
     }
-
-    const user = await prisma.user.findUnique({ where: { email } });
+    // ورود با ایمیل یا شماره تماس (اپراتورها با شماره تماس وارد می‌شوند)
+    const user = await prisma.user.findFirst({
+      where: { OR: [{ email: identifier }, { phone: identifier }, { email: `${identifier}@marketman.local` }] },
+    });
+    if (user && role && user.role !== role) {
+      return res.status(403).json({ error: role === 'MANAGER' ? 'این حساب «مدیر» نیست؛ حالت اپراتور را انتخاب کنید' : 'این حساب «اپراتور» نیست؛ حالت مدیر را انتخاب کنید' });
+    }
     if (!user) {
       return res.status(401).json({ error: 'ایمیل یا رمز عبور اشتباه است' });
     }

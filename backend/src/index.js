@@ -16,6 +16,7 @@ app.use(cors({ origin: corsOrigin, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+require('fs').mkdirSync(path.join(__dirname, '../uploads/profiles'), { recursive: true });
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/api/auth', authRoutes);

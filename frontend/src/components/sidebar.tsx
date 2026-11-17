@@ -1,98 +1,51 @@
 'use client';
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Users, FileText, BarChart3, Settings, LogOut, Menu, X, PhoneCall, User } from 'lucide-react';
-import { isManager, isOperator, logout } from '@/lib/auth';
+import { Users, FileText, BarChart3, LogOut, Menu, X, PhoneCall, User, Sparkles } from 'lucide-react';
+import { logout } from '@/lib/auth';
 
 const navItems = [
-  { name: 'دیشبورد وآمار', href: '/dashboard', icon: BarChart3, roles: ['MANAGER'] },
+  { name: 'داشبورد و آمار', href: '/dashboard', icon: BarChart3, roles: ['MANAGER'] },
   { name: 'لیست مشتریان امروز', href: '/my-leads', icon: PhoneCall, roles: ['OPERATOR'] },
-  { name: 'مدیریت اپراتور‌ها', href: '/operators', icon: Users, roles: ['MANAGER'] },
+  { name: 'مدیریت اپراتورها', href: '/operators', icon: Users, roles: ['MANAGER'] },
   { name: 'ثبت لیست مشتریان', href: '/leads', icon: FileText, roles: ['MANAGER'] },
   { name: 'پروفایل من', href: '/profile', icon: User, roles: ['MANAGER', 'OPERATOR'] },
-  { name: 'خروج', href: '#', icon: LogOut, roles: ['MANAGER', 'OPERATOR'] },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  useEffect(() => { try { setUser(JSON.parse(localStorage.getItem('mm_user') || 'null')); } catch { setUser(null); } }, [pathname]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  const role = user?.role || 'OPERATOR';
 
-  useEffect(() => {
-    setUser(JSON.parse(localStorage.getItem('mm_user') || 'null'));
-  }, []);
+  const nav = (
+    <>
+      <div className="flex items-center justify-between px-5 pt-6 pb-4">
+        <div className="flex items-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-lg shadow-emerald-500/30"><Sparkles className="h-5 w-5" /></span>
+          <div><p className="text-lg font-black leading-5 text-white">مارکت‌من</p><p className="text-[11px] text-slate-400">Marketman CRM</p></div>
+        </div>
+        <button onClick={() => setMobileOpen(false)} className="text-slate-400 hover:text-white md:hidden" aria-label="بستن منو"><X className="h-6 w-6" /></button>
+      </div>
+      {user && <div className="mx-4 mb-4 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10"><p className="text-sm font-bold text-white">{user.firstName} {user.lastName}</p><p className="mt-0.5 text-xs text-emerald-300">{role === 'MANAGER' ? 'مدیر سامانه' : 'اپراتور فروش'}</p></div>}
+      <nav className="flex-1 space-y-1 px-3">
+        {navItems.filter(i => i.roles.includes(role)).map(item => {
+          const active = pathname === item.href; const Icon = item.icon;
+          return <Link key={item.href} href={item.href} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}><Icon className="h-5 w-5" />{item.name}</Link>;
+        })}
+      </nav>
+      <div className="p-3"><button onClick={logout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/10"><LogOut className="h-5 w-5" />خروج از حساب</button></div>
+    </>
+  );
 
   return (
     <>
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-gray-900/80 backdrop-blur-sm md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <aside className="fixed left-0 top-0 h-screen w-64 border-r border-gray-200 bg-white shadow-md z-30 md:flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300">
-        <div className="flex items-center justify-end p-5 md:justify-center">
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="md:hidden text-gray-400 hover:text-gray-600"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-        <div className="px-4 py-3 text-center font-bold text-emerald-700 tracking-tight text-lg">
-          بازاریمن
-        </div>
-        <nav className="flex-1 space-y-1 px-3">
-          {navItems
-            .filter((item) => item.roles.includes(user?.role || 'OPERATOR'))
-            .map((item) => {
-              if (item.href === '#') {
-                return (
-                  <button
-                    key={item.name}
-                    onClick={() => {
-                      logout();
-                    }}
-                    className="flex items-center w-full px-3 py-2.5 text-right text-sm font-medium rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  >
-                    <LogOut className="ml-2 w-5 h-5 text-gray-400" />
-                    {item.name}
-                  </button>
-                );
-              }
-              const active = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={twCls(
-                    'flex items-center w-full px-3 py-2.5 text-right text-sm font-medium rounded-lg transition-colors',
-                    active
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
-                  )}
-                >
-                  <Icon className="ml-2 w-5 h-5 text-gray-400 group-hover:text-emerald-600" />
-                  {item.name}
-                </Link>
-              );
-            })}
-        </nav>
-      </aside>
-      <button
-        className="md:hidden fixed left-4 top-4 z-50 flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
-        onClick={() => setMobileOpen(true)}
-        aria-label="منو"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      <button className="fixed right-4 top-4 z-50 flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white shadow-lg md:hidden" onClick={() => setMobileOpen(true)} aria-label="باز کردن منو"><Menu className="h-5 w-5" /></button>
+      {mobileOpen && <div className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside className={`fixed inset-y-0 right-0 z-50 flex w-64 flex-col bg-slate-900 shadow-2xl transition-transform duration-300 md:translate-x-0 ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}`}>{nav}</aside>
     </>
   );
-}
-
-function twCls(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
 }

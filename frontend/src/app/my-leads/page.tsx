@@ -21,11 +21,7 @@ export default function MyLeadsPage() {
       router.replace('/dashboard');
       return;
     }
-    api.get('/leads?mine=true').then((r) => {
-      setLeads(r.data.leads || []);
-      setLoading(false);
-      setChecked(true);
-    });
+    api.get('/leads').then((r) => { setLeads(r.data.leads || []); }).catch(() => {}).finally(() => { setLoading(false); setChecked(true); });
   }, [router]);
 
   if (!checked) return null;
@@ -68,7 +64,7 @@ export default function MyLeadsPage() {
               <tbody>
                 {leads.map((lead) => (
                   <LeadRow key={lead.id} lead={lead} onUpdate={() => {
-                    api.get('/leads?mine=true').then((r) => setLeads(r.data.leads || []));
+                    api.get('/leads').then((r) => setLeads(r.data.leads || []));
                   }} />
                 ))}
               </tbody>

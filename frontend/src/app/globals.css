@@ -77,9 +77,4 @@
   }
 }
 
-@media (min-width: 768px) {
-  .page-main {
-    margin-left: 16rem;
-    padding: 2rem;
-  }
-}
+

@@ -22,7 +22,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email, password, role });
       const { token, user } = res.data;
       setToken(token);
       setUser(user);
@@ -79,10 +79,10 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                ایمیل یا شماره تماس
+                {role === 'MANAGER' ? 'ایمیل مدیر' : 'شماره تماس اپراتور'}
               </label>
               <Input
-                placeholder="admin@marketman.ir"
+                placeholder={role === 'MANAGER' ? 'admin@marketman.ir' : '09123456789'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 leftIcon={<Mail className="w-4 h-4" />}
@@ -106,7 +106,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-xs text-gray-500">
-            حساب مدیر پیش‌فرض: admin@marketman.ir / 12345678
+            حساب مدیر پیش‌فرض: admin@marketman.ir / admin123456 — اپراتور با شماره تماس و رمزی که مدیر ساخته وارد می‌شود
           </p>
         </div>
       </Card>
