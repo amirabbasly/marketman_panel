@@ -63,7 +63,7 @@ model Lead {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  createdBy         User         @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdBy         User?        @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
   contactedBy       User?        @relation("LeadContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
 }
 
