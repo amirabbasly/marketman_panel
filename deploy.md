@@ -80,7 +80,27 @@ sudo nano /etc/nginx/sites-available/marketman   # proxy_pass ها را هماه
 ./deploy.sh && sudo nginx -t && sudo systemctl reload nginx
 ```
 
-## ۸) دستورات کاربردی
+## ۸) خطای 502 Bad Gateway
+
+یعنی nginx سالم است ولی به بک‌اند/فرانت‌اند نمی‌رسد. قدم‌به‌قدم:
+
+```bash
+cd /var/www/marketman_panel
+docker compose ps                          # هر سه کانتینر باید Up باشند
+curl http://127.0.0.1:5100/api/health      # بک‌اند مستقیم: باید {"ok":true} بدهد
+curl -I http://127.0.0.1:3001              # فرانت مستقیم: باید 200 بدهد
+grep -n proxy_pass /etc/nginx/sites-available/marketman   # باید 3001 و 5100 باشند
+```
+
+- اگر `curl` مستقیم جواب نداد → کانتینر پایین است: `docker compose logs --tail=80 backend` علت را نشان می‌دهد؛ بعد `./deploy.sh` را دوباره بزنید (اسکریپت خودش سلامت سرویس‌ها را چک و لاگ چاپ می‌کند).
+- اگر مستقیم جواب داد ولی از دامنه 502 بود → کانفیگ nginx روی سرور قدیمی است؛ `./deploy.sh` جدید آن را خودکار نصب و ریلود می‌کند (اگر دسترسی sudo بدون رمز داشته باشد)، وگرنه دستوراتی که در انتهای اسکریپت چاپ می‌شود را دستی اجرا کنید:
+
+```bash
+sudo cp nginx/marketman.conf /etc/nginx/sites-available/marketman
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## ۹) دستورات کاربردی
 
 ```bash
 docker compose ps                     # وضعیت سرویس‌ها
