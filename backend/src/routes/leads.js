@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const asyncHandler = require('express-async-handler');
 const { authenticate, requireManager } = require('../middleware/auth');
+const { TIERS, tierFor, tehranMonthBounds } = require('../lib/tiers');
 
 const prisma = new PrismaClient();
 
@@ -84,12 +85,16 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req, res) => {
-    const { from, to, mine, scope, mode, assignedTo, status, search } = req.query;
+    const { from, to, mine, scope, mode, assignedTo, status, stage, search } = req.query;
     const where = {};
     const and = [];
 
     if (req.user.role === 'OPERATOR') {
-      if (scope === 'exclusive') {
+      if (scope === 'projects') {
+        // پروژه‌ها و جلسات من — بدون محدودیت تاریخ
+        and.push({ OR: [{ assignedToId: req.user.id }, { contactedById: req.user.id }] });
+        if (!stage) and.push({ OR: [{ meetingAt: { not: null } }, { projectStage: { not: 'NONE' } }] });
+      } else if (scope === 'exclusive') {
         // مشتریان اختصاصی من — بدون محدودیت تاریخ
         where.assignedToId = req.user.id;
       } else if (mine) {
@@ -107,6 +112,12 @@ router.get(
     }
 
     if (status) where.status = status;
+    if (stage === 'projects') { and.push({ OR: [{ meetingAt: { not: null } }, { projectStage: { not: 'NONE' } }] }); }
+    else if (stage === 'meetings') { where.meetingAt = { not: null }; where.projectStage = 'PENDING_APPROVAL'; }
+    else if (stage === 'completed') { where.projectStage = 'COMPLETED'; }
+    else if (stage === 'pending') { where.projectStage = 'PENDING_APPROVAL'; }
+    else if (stage === 'rejected') { where.projectStage = 'REJECTED'; }
+    else if (stage) { where.projectStage = stage; }
     if (search) {
       and.push({
         OR: [
@@ -209,6 +220,7 @@ router.patch(
         contactedAt: new Date(),
         contactedById: req.user.id,
         meetingAt: meetingDate,
+        projectStage: meetingDate ? 'PENDING_APPROVAL' : 'NONE',
       },
       include: leadInclude,
     });
@@ -230,6 +242,71 @@ router.patch(
     const updated = await prisma.lead.update({
       where: { id },
       data: { status: 'CANCELLED', contactNote: contactNote || null, contactedAt: new Date(), contactedById: req.user.id },
+      include: leadInclude,
+    });
+    res.json({ lead: updated });
+  })
+);
+
+// تأیید نهایی پروژه توسط مدیر → تکمیل‌شده + شارژ کیف پول اپراتور
+router.patch(
+  '/:id/approve-project',
+  authenticate,
+  requireManager,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const lead = await prisma.lead.findUnique({ where: { id }, include: leadInclude });
+    if (!lead) return res.status(404).json({ error: 'پروژه یافت نشد' });
+    if (lead.projectStage === 'COMPLETED') return res.status(400).json({ error: 'این پروژه قبلاً تکمیل و کیف پول آن شارژ شده است' });
+    if (lead.projectStage !== 'PENDING_APPROVAL') return res.status(400).json({ error: 'این پروژه در مرحله تعلیق (در انتظار تأیید) نیست' });
+
+    const operatorId = lead.contactedById || lead.assignedToId;
+    let transaction = null;
+    if (operatorId) {
+      const existing = await prisma.walletTransaction.findUnique({ where: { leadId: id } });
+      if (!existing) {
+        // نرخ کمیسیون بر اساس سطح فعلی اپراتور در لیگ (فروش ماه شمسی جاری)
+        const { start, end } = tehranMonthBounds();
+        const monthSales = await prisma.lead.count({
+          where: { contactedById: operatorId, status: 'CONTACTED', contactedAt: { gte: start, lt: end } },
+        });
+        const operator = await prisma.user.findUnique({ where: { id: operatorId }, select: { levelOverride: true } });
+        const tier = (operator?.levelOverride && TIERS.find((t) => t.level === operator.levelOverride)) || tierFor(monthSales);
+        transaction = await prisma.walletTransaction.create({
+          data: {
+            operatorId,
+            leadId: id,
+            amount: tier.rate,
+            description: `کمیسیون پروژه «${lead.brandName}» — سطح ${tier.name} (نرخ هر پروژه در این سطح)`,
+          },
+        });
+      } else {
+        transaction = existing;
+      }
+    }
+
+    const updated = await prisma.lead.update({
+      where: { id },
+      data: { projectStage: 'COMPLETED', completedAt: new Date() },
+      include: leadInclude,
+    });
+    res.json({ lead: updated, walletTransaction: transaction ? { ...transaction, amount: Number(transaction.amount) } : null });
+  })
+);
+
+// رد پروژه توسط مدیر → برگشت از تعلیق بدون شارژ کیف پول
+router.patch(
+  '/:id/reject-project',
+  authenticate,
+  requireManager,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const lead = await prisma.lead.findUnique({ where: { id } });
+    if (!lead) return res.status(404).json({ error: 'پروژه یافت نشد' });
+    if (lead.projectStage !== 'PENDING_APPROVAL') return res.status(400).json({ error: 'این پروژه در مرحله تعلیق نیست' });
+    const updated = await prisma.lead.update({
+      where: { id },
+      data: { projectStage: 'REJECTED' },
       include: leadInclude,
     });
     res.json({ lead: updated });

@@ -26,14 +26,7 @@ function bounds() {
   return { monthStart, nextMonthStart, weekStart };
 }
 
-const TIERS = [
-  { level: 1, name: 'برنزی', minSales: 0, rate: 5000000, color: '#b45309' },
-  { level: 2, name: 'نقره‌ای', minSales: 3, rate: 8000000, color: '#64748b' },
-  { level: 3, name: 'طلایی', minSales: 6, rate: 12000000, color: '#d97706' },
-  { level: 4, name: 'پلاتینیوم', minSales: 10, rate: 15000000, color: '#0ea5e9' },
-  { level: 5, name: 'الماس', minSales: 15, rate: 20000000, color: '#7c3aed' },
-];
-const tierFor = (sales) => [...TIERS].reverse().find((t) => sales >= t.minSales) || TIERS[0];
+const { TIERS, tierFor } = require('../lib/tiers');
 
 router.get(
   '/',

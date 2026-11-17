@@ -18,6 +18,13 @@ enum LeadStatus {
   CANCELLED
 }
 
+enum ProjectStage {
+  NONE
+  PENDING_APPROVAL
+  COMPLETED
+  REJECTED
+}
+
 enum AssignmentMode {
   OPEN
   ASSIGNED
@@ -48,6 +55,7 @@ model User {
   leads             Lead[]       @relation("LeadCreator")
   contactedLeads    Lead[]       @relation("LeadContactedBy")
   assignedLeads     Lead[]       @relation("LeadAssignedTo")
+  walletTransactions WalletTransaction[]
   changeRequests    ChangeRequest[]
   reviewedRequests  ChangeRequest[] @relation("Reviewer")
 }
@@ -66,6 +74,8 @@ model Lead {
   suggestedAmount   Decimal?
   contactedAt       DateTime?
   meetingAt         DateTime?
+  projectStage      ProjectStage @default(NONE)
+  completedAt       DateTime?
   contactedById     String?
   createdById       String?
   assignmentMode    AssignmentMode @default(OPEN)
@@ -77,6 +87,19 @@ model Lead {
   createdBy         User?        @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
   contactedBy       User?        @relation("LeadContactedBy", fields: [contactedById], references: [id], onDelete: SetNull)
   assignedTo        User?        @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  walletTransaction WalletTransaction?
+}
+
+model WalletTransaction {
+  id          String   @id @default(uuid())
+  operatorId  String
+  leadId      String   @unique
+  amount      Decimal
+  description String?
+  createdAt   DateTime @default(now())
+
+  operator    User     @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
 model ChangeRequest {

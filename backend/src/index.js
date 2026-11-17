@@ -8,6 +8,7 @@ const userRoutes = require('./routes/users');
 const leadRoutes = require('./routes/leads');
 const statRoutes = require('./routes/stats');
 const leagueRoutes = require('./routes/league');
+const walletRoutes = require('./routes/wallet');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/leads', leadRoutes);
 app.use('/api/stats', statRoutes);
 app.use('/api/league', leagueRoutes);
+app.use('/api/wallet', walletRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'marketman-backend' }));
 

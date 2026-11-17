@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Users, FileText, LayoutDashboard, LogOut, X, PhoneCall, CircleUserRound, ChevronLeft, Trophy, ScrollText, Phone, UserCheck, Shuffle, Mic } from 'lucide-react';
+import { Users, FileText, LayoutDashboard, LogOut, X, PhoneCall, CircleUserRound, ChevronLeft, Trophy, ScrollText, Phone, UserCheck, Shuffle, Mic, CalendarCheck, Wallet } from 'lucide-react';
 import { logout } from '@/lib/auth';
 import { api } from '@/lib/api';
 
@@ -11,6 +11,8 @@ const navItems = [
   { name: 'داشبورد و آمار', desc: 'نمای کلی عملکرد فروش', href: '/dashboard', icon: LayoutDashboard, roles: ['MANAGER'] },
   { name: 'لیست مشتریان امروز', desc: 'مشتریان امروز و ثبت تماس', href: '/my-leads', icon: PhoneCall, roles: ['OPERATOR'] },
   { name: 'مشتریان اختصاصی من', desc: 'مشتری‌های اختصاص‌یافته به شما', href: '/my-customers', icon: UserCheck, roles: ['OPERATOR'] },
+  { name: 'پروژه‌ها و جلسات', desc: 'جلسات، تعلیق و تکمیل پروژه', href: '/projects', icon: CalendarCheck, roles: ['MANAGER', 'OPERATOR'] },
+  { name: 'کیف پول', desc: 'فروش، طلب و شارژها', href: '/wallet', icon: Wallet, roles: ['MANAGER', 'OPERATOR'] },
   { name: 'مدیریت اپراتورها', desc: 'ساخت و ویرایش اپراتور', href: '/operators', icon: Users, roles: ['MANAGER'] },
   { name: 'ثبت لیست مشتریان', desc: 'لیست روزانه مشتریان', href: '/leads', icon: FileText, roles: ['MANAGER'] },
   { name: 'اختصاص مشتری', desc: 'مشتری آزاد و اختصاصی', href: '/assignments', icon: Shuffle, roles: ['MANAGER'] },
