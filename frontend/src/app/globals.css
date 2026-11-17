@@ -5,76 +5,41 @@
 @layer base {
   html {
     direction: rtl;
+    scroll-behavior: smooth;
   }
   body {
-    @apply bg-gray-50 text-gray-900;
-    font-family: system-ui, Tahoma, 'Segoe UI', Arial, sans-serif;
+    @apply bg-slate-100 font-sans text-slate-800 antialiased;
+    background-image:
+      radial-gradient(60rem 30rem at 110% -10%, rgb(16 185 129 / 0.07), transparent 60%),
+      radial-gradient(50rem 26rem at -10% 0%, rgb(14 165 233 / 0.05), transparent 55%);
+    background-attachment: fixed;
   }
-  * {
-    @apply selection:bg-emerald-200 selection:text-emerald-900;
-  }
+  ::selection { @apply bg-brand-200 text-brand-900; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300 hover:bg-slate-400; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 }
 
 @layer components {
-  .page-wrapper {
-    display: flex;
-    flex-direction: column;
-  }
-  .page-main {
-    padding: 1.5rem;
-  }
+  /* تیتر صفحه‌ها */
+  .page-title { @apply text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl; }
+  .page-subtitle { @apply mt-1 text-sm text-slate-500; }
 
-  [dir='rtl'] .ml-auto {
-    margin-right: auto !important;
-    margin-left: 0 !important;
+  /* جدول‌های مدرن (روی همه جدول‌های پنل اعمال می‌شود) */
+  table { @apply w-full border-collapse text-sm; }
+  thead th {
+    @apply whitespace-nowrap bg-slate-50/80 px-4 py-3 text-right text-xs font-bold text-slate-500;
   }
-  [dir='rtl'] .mr-auto {
-    margin-left: auto !important;
-    margin-right: 0 !important;
+  tbody td { @apply px-4 py-3.5 align-middle text-slate-700; }
+  tbody tr { @apply border-t border-slate-100 transition-colors hover:bg-brand-50/40; }
+
+  select {
+    @apply rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
   }
-  [dir='rtl'] .ml-3 {
-    margin-right: 0.75rem !important;
-    margin-left: 0 !important;
+  textarea {
+    @apply rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
   }
-  [dir='rtl'] .ml-4 {
-    margin-right: 1rem !important;
-    margin-left: 0 !important;
-  }
-  [dir='rtl'] .ml-6 {
-    margin-right: 1.5rem !important;
-    margin-left: 0 !important;
-  }
-  [dir='rtl'] .mr-3 {
-    margin-left: 0.75rem !important;
-    margin-right: 0 !important;
-  }
-  [dir='rtl'] .mr-4 {
-    margin-left: 1rem !important;
-    margin-right: 0 !important;
-  }
-  [dir='rtl'] .pl-4 {
-    padding-right: 1rem !important;
-    padding-left: 0 !important;
-  }
-  [dir='rtl'] .pr-4 {
-    padding-left: 1rem !important;
-    padding-right: 0 !important;
-  }
-  [dir='rtl'] .text-left {
-    text-align: right !important;
-  }
-  [dir='rtl'] .space-x-2 > :not([hidden]) ~ :not([hidden]) {
-    margin-right: 0.5rem !important;
-    margin-left: 0 !important;
-  }
-  [dir='rtl'] .space-x-3 > :not([hidden]) ~ :not([hidden]) {
-    margin-right: 0.75rem !important;
-    margin-left: 0 !important;
-  }
-  [dir='rtl'] .space-x-4 > :not([hidden]) ~ :not([hidden]) {
-    margin-right: 1rem !important;
-    margin-left: 0 !important;
-  }
+  input[type='file'] { @apply text-sm text-slate-500; }
 }
-
-
