@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { isManager } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
+import { JalaliDatePicker } from '@/components/ui/datepicker';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import Link from 'next/link';
@@ -74,7 +75,7 @@ export default function CreateOperatorPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">تاریخ تولد</label>
-              <Input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} />
+              <JalaliDatePicker value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} placeholder="تاریخ تولد (شمسی)" />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">رمز عبور</label>

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/utils';
+import { formatJalaliDateTime } from '@/lib/jalali';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { ContactModal } from './ContactModal';
@@ -44,10 +45,11 @@ export function LeadRow({ lead, onUpdate }: LeadRowProps) {
           </Badge>
         </td>
         <td className="px-4 py-4 text-sm">
-          {lead.suggestedAmount ? `${Number(lead.suggestedAmount).toLocaleString()} تومان` : '—'}
+          {lead.suggestedAmount ? `${Number(lead.suggestedAmount).toLocaleString('fa-IR')} تومان` : '—'}
         </td>
         <td className="px-4 py-4 text-sm text-gray-500">{lead.contactedBy ? `${lead.contactedBy.firstName} ${lead.contactedBy.lastName}` : '—'}</td>
         <td className="px-4 py-4 text-sm text-gray-500">{formatDateTime(lead.contactedAt)}</td>
+        <td className="px-4 py-4 text-sm font-bold text-brand-700">{lead.meetingAt ? formatJalaliDateTime(lead.meetingAt) : '—'}</td>
         <td className="px-4 py-4 text-right">
           {lead.status === 'NEW' && (
             <Button onClick={() => setContactOpen(true)} className="w-auto">

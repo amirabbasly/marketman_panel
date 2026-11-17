@@ -105,7 +105,26 @@ router.get(
       ? Number(revenueRes._sum.suggestedAmount)
       : 0;
 
+    // آمار کامل همه اپراتورها (حتی بدون فروش) برای نمایش بهترین/ضعیف‌ترین
+    const allOperators = await prisma.user.findMany({ where: { role: 'OPERATOR' }, select: { id: true, firstName: true, lastName: true } });
+    const opSales = await prisma.lead.groupBy({ by: ['contactedById'], where: { status: 'CONTACTED', contactedById: { not: null }, ...(hasDateFilter ? { createdAt: dateFilter } : {}) }, _count: { contactedById: true }, _sum: { suggestedAmount: true } });
+    const opCancels = await prisma.lead.groupBy({ by: ['contactedById'], where: { status: 'CANCELLED', contactedById: { not: null }, ...(hasDateFilter ? { createdAt: dateFilter } : {}) }, _count: { contactedById: true } });
+    const salesMap = Object.fromEntries(opSales.map(o=>[o.contactedById,{count:o._count.contactedById, revenue:o._sum.suggestedAmount?Number(o._sum.suggestedAmount):0}]));
+    const cancelMap = Object.fromEntries(opCancels.map(o=>[o.contactedById,o._count.contactedById]));
+    const operatorStats = allOperators.map(o=>({ operatorId:o.id, operator:`${o.firstName} ${o.lastName}`, sales:salesMap[o.id]?.count||0, cancels:cancelMap[o.id]||0, revenue:salesMap[o.id]?.revenue||0 })).sort((a,b)=>b.sales-a.sales);
+    const citySales = await prisma.lead.groupBy({ by: ['city'], where: { status: 'CONTACTED', city: { not: null }, ...(hasDateFilter ? { createdAt: dateFilter } : {}) }, _count: { city: true }, _sum: { suggestedAmount: true } });
+    const cityCancels = await prisma.lead.groupBy({ by: ['city'], where: { status: 'CANCELLED', city: { not: null }, ...(hasDateFilter ? { createdAt: dateFilter } : {}) }, _count: { city: true } });
+    const ccMap = Object.fromEntries(cityCancels.map(c=>[c.city,c._count.city]));
+    const cityStats = citySales.map(c=>({ city:c.city, sales:c._count.city, cancels:ccMap[c.city]||0, revenue:c._sum.suggestedAmount?Number(c._sum.suggestedAmount):0 })).sort((a,b)=>b.sales-a.sales);
+    const areaCancelsAll = topCancellations; // already computed above
+
     res.json({
+      operatorStats,
+      bestOperator: operatorStats[0] || null,
+      worstOperator: operatorStats.length ? operatorStats[operatorStats.length-1] : null,
+      cityStats,
+      bestCity: cityStats[0] || null,
+      worstCity: cityStats.length ? cityStats[cityStats.length-1] : null,
       summary: {
         totalLeads,
         totalNew,

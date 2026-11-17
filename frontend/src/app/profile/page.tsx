@@ -30,9 +30,11 @@ export default function ProfilePage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">پروفایل من</h1>
-        <Link href="/profile/request">
-          <Button>درخواست تغییر اطلاعات شخصی</Button>
-        </Link>
+        {!isManager() ? (
+          <Link href="/profile/request"><Button>درخواست تغییر اطلاعات شخصی</Button></Link>
+        ) : (
+          <Link href="/operators"><Button>ویرایش مستقیم کاربران (مدیر)</Button></Link>
+        )}
         {isManager() && (
           <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900">بازگشت به دیشبورد</Link>
         )}
