@@ -74,6 +74,21 @@ else
   echo "   sudo nginx -t && sudo systemctl reload nginx"
 fi
 
+# ---------- بررسی اینکه دامنه واقعاً به همین پنل می‌رسد ----------
+echo ">>> بررسی پاسخ nginx برای دامنه panel.marketmanai.ir روی خود سرور..."
+DOMAIN_HTML=$(curl -s -m 10 -H "Host: panel.marketmanai.ir" http://127.0.0.1/ || true)
+if echo "$DOMAIN_HTML" | grep -qi "marketman\|مارکت"; then
+  echo "   ✔ nginx برای این دامنه همین پنل را سرو می‌کند"
+else
+  echo "   !! هشدار: nginx روی این سرور برای دامنه panel.marketmanai.ir پاسخ این پنل را نداد."
+  echo "      یعنی یک سایت دیگر به‌عنوان پیش‌فرض جواب می‌دهد. این موارد را بررسی کنید:"
+  echo "      1) sudo nginx -T | grep -n server_name     (ببینید panel.marketmanai.ir چند بار و کجا تعریف شده)"
+  echo "      2) ls /etc/nginx/sites-enabled/            (فایل تکراری یا default را اصلاح کنید)"
+  echo "      3) اگر در Cloudflare حالت SSL روی Full است، کلادفلر به پورت 443 سرور می‌رود؛"
+  echo "         برای این ساب‌دامین گواهی بگیرید: sudo certbot --nginx -d panel.marketmanai.ir"
+  echo "         یا موقتاً در Cloudflare حالت SSL را Flexible بگذارید."
+fi
+
 echo ""
 echo ">>> وضعیت نهایی سرویس‌ها:"
 docker compose ps
