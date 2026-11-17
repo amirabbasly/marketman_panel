@@ -65,6 +65,7 @@ model Lead {
   contactNote       String?
   suggestedAmount   Decimal?
   contactedAt       DateTime?
+  meetingAt         DateTime?
   contactedById     String?
   createdById       String?
   assignmentMode    AssignmentMode @default(OPEN)

@@ -15,6 +15,7 @@ const titles: Record<string, string> = {
   '/league': 'لیگ و سطوح فروش',
   '/rules': 'قوانین و کسب درآمد',
   '/dialer': 'شماره‌گیر',
+  '/recordings': 'ضبط صدا — آرشیو تماس‌ها',
   '/operators': 'مدیریت اپراتورها',
   '/leads': 'ثبت لیست مشتریان',
   '/profile': 'پروفایل من',

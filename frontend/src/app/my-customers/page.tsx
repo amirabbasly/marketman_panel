@@ -50,7 +50,7 @@ export default function MyCustomersPage() {
           {loading ? <div className="py-12 text-center text-slate-500">در حال بارگذاری…</div>
           : leads.length ? (
             <table>
-              <thead><tr><th>نام برند</th><th>نام شخص</th><th>شهر / منطقه</th><th>حوزه فعالیت</th><th>شماره تماس</th><th>وضعیت</th><th>مبلغ پیشنهادی</th><th>تماس توسط</th><th>زمان تماس</th><th>عملیات</th></tr></thead>
+              <thead><tr><th>نام برند</th><th>نام شخص</th><th>شهر / منطقه</th><th>حوزه فعالیت</th><th>شماره تماس</th><th>وضعیت</th><th>مبلغ پیشنهادی</th><th>تماس توسط</th><th>زمان تماس</th><th>تایم جلسه</th><th>عملیات</th></tr></thead>
               <tbody>{leads.map((lead) => <LeadRow key={lead.id} lead={lead} onUpdate={load} />)}</tbody>
             </table>
           ) : <div className="py-12 text-center text-slate-400">هنوز مشتری اختصاصی ندارید؛ مشتریان آزاد از طریق درخواست‌هایی که روی صفحه می‌آید قابل قبول‌کردن هستند.</div>}

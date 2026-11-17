@@ -64,6 +64,22 @@ router.post(
   })
 );
 
+// جلسات ثبت‌شده — برای مدیریت
+router.get(
+  '/meetings',
+  authenticate,
+  requireManager,
+  asyncHandler(async (req, res) => {
+    const meetings = await prisma.lead.findMany({
+      where: { meetingAt: { not: null, gte: new Date(Date.now() - 24 * 3600 * 1000) }, status: 'CONTACTED' },
+      include: leadInclude,
+      orderBy: { meetingAt: 'asc' },
+      take: 100,
+    });
+    res.json({ meetings });
+  })
+);
+
 router.get(
   '/',
   authenticate,
@@ -159,11 +175,30 @@ router.patch(
   authenticate,
   asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { contactNote, suggestedAmount } = req.body || {};
+    const { contactNote, suggestedAmount, meetingAt } = req.body || {};
     const lead = await prisma.lead.findUnique({ where: { id } });
     if (!lead) return res.status(404).json({ error: 'مشتری یافت نشد' });
     const guard = guardOperatorOwnership(req, lead);
     if (guard) return res.status(403).json({ error: guard });
+
+    // تایم جلسه برای مشتری تأییدشده الزامی است و نباید با جلسه دیگری تداخل داشته باشد
+    let meetingDate = null;
+    if (meetingAt) {
+      meetingDate = new Date(meetingAt);
+      if (isNaN(meetingDate.getTime())) return res.status(400).json({ error: 'تاریخ و ساعت جلسه معتبر نیست' });
+      const conflict = await prisma.lead.findFirst({
+        where: {
+          id: { not: id },
+          meetingAt: { gt: new Date(meetingDate.getTime() - 3600 * 1000), lt: new Date(meetingDate.getTime() + 3600 * 1000) },
+        },
+        include: leadInclude,
+      });
+      if (conflict) {
+        const when = conflict.meetingAt.toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' });
+        const who = conflict.contactedBy ? `${conflict.contactedBy.firstName} ${conflict.contactedBy.lastName}` : (conflict.assignedTo ? `${conflict.assignedTo.firstName} ${conflict.assignedTo.lastName}` : '—');
+        return res.status(409).json({ error: `تداخل جلسه: برای «${conflict.brandName}» (اپراتور: ${who}) در ${when} جلسه ثبت شده است. بین یک ساعت قبل و بعد از آن تایم، جلسه دیگری نمی‌توان ثبت کرد؛ ساعت دیگری انتخاب کنید.` });
+      }
+    }
 
     const updated = await prisma.lead.update({
       where: { id },
@@ -173,6 +208,7 @@ router.patch(
         suggestedAmount: suggestedAmount ? Number(suggestedAmount) : null,
         contactedAt: new Date(),
         contactedById: req.user.id,
+        meetingAt: meetingDate,
       },
       include: leadInclude,
     });

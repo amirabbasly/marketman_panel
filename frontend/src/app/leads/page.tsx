@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { isManager } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
+import { JalaliDatePicker } from '@/components/ui/datepicker';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -166,8 +167,8 @@ export default function LeadsPage() {
               <option value="CONTACTED">تماس گرفته شده</option>
               <option value="CANCELLED">لغو شده</option>
             </select>
-            <Input type="date" value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
-            <Input type="date" value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
+            <JalaliDatePicker value={filters.from} onChange={(e) => setFilters({ ...filters, from: e.target.value })} />
+            <JalaliDatePicker value={filters.to} onChange={(e) => setFilters({ ...filters, to: e.target.value })} />
           </div>
         </div>
         <div className="overflow-x-auto p-6">
@@ -185,7 +186,7 @@ export default function LeadsPage() {
                   <th className="px-4 py-3 font-medium text-gray-600">وضعیت</th>
                   <th className="px-4 py-3 font-medium text-gray-600">مبلغ پیشنهادی</th>
                   <th className="px-4 py-3 font-medium text-gray-600">تماس گرفته توسط</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">زمان تماس</th>
+                  <th className="px-4 py-3 font-medium text-gray-600">زمان تماس</th><th className="px-4 py-3 font-medium text-gray-600">تایم جلسه</th>
                   <th className="px-4 py-3 font-medium text-gray-600 text-right">عملیات</th>
                 </tr>
               </thead>

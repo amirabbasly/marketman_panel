@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Users, FileText, LayoutDashboard, LogOut, X, PhoneCall, CircleUserRound, ChevronLeft, Trophy, ScrollText, Phone, UserCheck, Shuffle } from 'lucide-react';
+import { Users, FileText, LayoutDashboard, LogOut, X, PhoneCall, CircleUserRound, ChevronLeft, Trophy, ScrollText, Phone, UserCheck, Shuffle, Mic } from 'lucide-react';
 import { logout } from '@/lib/auth';
 import { api } from '@/lib/api';
 
@@ -15,6 +15,7 @@ const navItems = [
   { name: 'ثبت لیست مشتریان', desc: 'لیست روزانه مشتریان', href: '/leads', icon: FileText, roles: ['MANAGER'] },
   { name: 'اختصاص مشتری', desc: 'مشتری آزاد و اختصاصی', href: '/assignments', icon: Shuffle, roles: ['MANAGER'] },
   { name: 'لیگ و سطوح فروش', desc: 'رتبه‌بندی و مدیریت سطوح', href: '/league', icon: Trophy, roles: ['MANAGER', 'OPERATOR'] },
+  { name: 'ضبط صدا', desc: 'آرشیو تماس‌ها (به‌زودی)', href: '/recordings', icon: Mic, roles: ['MANAGER'] },
   { name: 'قوانین و کسب درآمد', desc: 'شرایط همکاری و درآمد', href: '/rules', icon: ScrollText, roles: ['OPERATOR'] },
   { name: 'شماره‌گیر', desc: 'صفحه‌کلید شماره‌گیر (به‌زودی)', href: '/dialer', icon: Phone, roles: ['MANAGER', 'OPERATOR'] },
   { name: 'پروفایل من', desc: 'اطلاعات شخصی و درخواست تغییر', href: '/profile', icon: CircleUserRound, roles: ['MANAGER', 'OPERATOR'] },

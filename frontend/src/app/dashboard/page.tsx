@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { isManager } from '@/lib/auth';
 import { toPersianDigits } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { JalaliDatePicker } from '@/components/ui/datepicker';
 import { Badge } from '@/components/ui/badge';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -21,6 +22,12 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState({ from: '', to: '' });
+  const [meetings, setMeetings] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isManager()) return;
+    api.get('/leads/meetings').then((r) => setMeetings(r.data.meetings || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isManager()) {
@@ -46,8 +53,8 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <h1 className="page-title">داشبورد مدیر</h1>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs font-bold text-slate-500">از تاریخ<Input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} className="mt-1" /></label>
-          <label className="text-xs font-bold text-slate-500">تا تاریخ<Input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} className="mt-1" /></label>
+          <label className="text-xs font-bold text-slate-500">از تاریخ<JalaliDatePicker value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} className="mt-1" /></label>
+          <label className="text-xs font-bold text-slate-500">تا تاریخ<JalaliDatePicker value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} className="mt-1" /></label>
           {(range.from || range.to) && <Button variant="outline" onClick={() => setRange({ from: '', to: '' })}>حذف فیلتر</Button>}
           <Button variant="outline" onClick={() => exportCsv(data)}><Download className="h-4 w-4" />خروجی CSV آمار</Button>
           <Badge variant="info">{new Date().toLocaleDateString('fa-IR')}</Badge>
@@ -62,6 +69,21 @@ export default function DashboardPage() {
         <StatCard title="درآمد پیشنهادی (تومان)" value={toPersianDigits(summary.revenue)} icon={<BarChartIcon className="w-5 h-5" />} color="bg-purple-500" />
         <StatCard title="نرخ تبدیل" value={`${summary.conversionRate}%`} color="bg-indigo-500" />
       </div>
+
+      {meetings.length > 0 && (
+        <Card className="p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900">🗓️ جلسات ثبت‌شده و پیش‌رو (برای مدیریت)</h3>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {meetings.slice(0, 9).map((m: any) => (
+              <div key={m.id} className="rounded-2xl bg-brand-50/60 px-4 py-3 ring-1 ring-brand-100">
+                <p className="text-sm font-black text-slate-800">{m.brandName} — {m.personName}</p>
+                <p className="mt-0.5 text-xs text-slate-500">جلسه: <b className="text-brand-700">{new Date(m.meetingAt).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'medium', timeStyle: 'short' })}</b></p>
+                <p className="text-xs text-slate-500">اپراتور: {m.contactedBy ? `${m.contactedBy.firstName} ${m.contactedBy.lastName}` : (m.assignedTo ? `${m.assignedTo.firstName} ${m.assignedTo.lastName}` : '—')}{m.suggestedAmount ? ` · مبلغ: ${Number(m.suggestedAmount).toLocaleString('fa-IR')} تومان` : ''}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Insight title="🏆 بیشترین فروش — اپراتور" value={bestOperator ? `${bestOperator.operator}` : '—'} sub={bestOperator ? `${bestOperator.sales} فروش • ${Number(bestOperator.revenue).toLocaleString('fa-IR')} تومان` : 'داده‌ای نیست'} />
